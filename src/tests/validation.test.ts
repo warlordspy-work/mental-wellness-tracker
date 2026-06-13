@@ -69,4 +69,11 @@ describe('validation - Form Validation Constraints', () => {
     expect(errors.examDate).toContain('valid exam date');
   });
 
+  it('should strip control characters and fail if remaining journal is too short', () => {
+    const controlOnly = { ...validData, journalText: 'Hi\x00\x07' }; // Strips to "Hi" which is < 5 characters
+    const errors = validateCheckIn(controlOnly);
+    expect(errors.journalText).toContain('minimum 5 characters');
+  });
+
 });
+

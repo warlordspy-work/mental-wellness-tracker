@@ -5,9 +5,6 @@
  * using CSS custom properties for color, spacing, and transition constants.
  * Includes explicit keyboard focus indicators and responsive layout systems.
  */
-
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
-
 :root {
   /* Calming theme palette (Teal and Seafoam) */
   --color-bg: #f3f7f6;
@@ -35,7 +32,7 @@
   --color-risk-high-bg: #fee2e2;
 
   /* Typography */
-  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   
   /* Layout Spacing */
   --spacing-xs: 0.25rem;

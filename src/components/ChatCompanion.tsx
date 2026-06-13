@@ -4,17 +4,22 @@
  * Chat interface simulating a wellness companion.
  * Integrates keyword safety triggers, provides exam-grounded empathetic advice,
  * and maintains complete client-side chat logs.
+ * 
+ * Code Quality Updates: Added explicit React.ReactElement return type, integrated input sanitization
+ * using sanitizer helper, and capped chat message lengths using constants.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage } from '../lib/types';
 import { scanForCrisis } from '../lib/safety';
+import { sanitizeTextInput } from '../lib/sanitizer';
+import { INPUT_LIMITS } from '../lib/constants';
 
 interface ChatCompanionProps {
   examType: string;
 }
 
-export const ChatCompanion: React.FC<ChatCompanionProps> = ({ examType }) => {
+export const ChatCompanion: React.FC<ChatCompanionProps> = ({ examType }): React.ReactElement => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
@@ -31,17 +36,22 @@ export const ChatCompanion: React.FC<ChatCompanionProps> = ({ examType }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = (e: React.FormEvent): void => {
     e.preventDefault();
     if (!inputValue.trim()) {
       return;
     }
 
-    const userMessageText = inputValue.trim();
+    // Sanitize user text and enforce character boundaries
+    const sanitizedInput = sanitizeTextInput(inputValue, INPUT_LIMITS.CHAT_MESSAGE_MAX_LENGTH);
+    if (!sanitizedInput) {
+      return;
+    }
+
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
-      text: userMessageText,
+      text: sanitizedInput,
       timestamp: new Date().toISOString()
     };
 
@@ -49,7 +59,7 @@ export const ChatCompanion: React.FC<ChatCompanionProps> = ({ examType }) => {
     setInputValue('');
 
     // Safety Layer Check
-    const safetyCheck = scanForCrisis(userMessageText);
+    const safetyCheck = scanForCrisis(sanitizedInput);
 
     setTimeout(() => {
       let responseText = '';
@@ -63,7 +73,7 @@ export const ChatCompanion: React.FC<ChatCompanionProps> = ({ examType }) => {
           `- AASRA Suicide Helpline: **91-9820466726**\n\nPlease reach out to them or a trusted adult immediately. I am an AI companion, not an emergency clinical service.`;
       } else {
         // Empathetic response generation based on keyword scanning
-        const textLower = userMessageText.toLowerCase();
+        const textLower = sanitizedInput.toLowerCase();
         
         if (textLower.includes('mock') || textLower.includes('test') || textLower.includes('score') || textLower.includes('marks')) {
           responseText = `I understand how overwhelming mock test marks can be during ${examType} prep. Remember that mocks are only diagnostic exercises designed to reveal subject gaps, not a prediction of your final score. \n\n*Actionable strategy:* Try focusing on your 'Mistake Logbook' rather than the aggregate percentile. Review 3 questions you got wrong and master their concepts today. You've got this!`;
@@ -202,6 +212,7 @@ export const ChatCompanion: React.FC<ChatCompanionProps> = ({ examType }) => {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="E.g., I'm feeling stressed about mock tests..."
+            maxLength={INPUT_LIMITS.CHAT_MESSAGE_MAX_LENGTH}
             autoComplete="off"
             style={{ width: '100%', height: '44px' }}
           />

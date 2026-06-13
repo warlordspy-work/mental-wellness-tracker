@@ -4,19 +4,22 @@
  * Provides features for student data ownership.
  * Implements JSON download utilities, local database purging,
  * and high-contrast alert boxes explaining local browser confinement.
+ * 
+ * Code Quality Updates: Added explicit React.ReactElement return type, imported and handled
+ * storage fallback flags (isUsingTemporaryCache) to warn users when local storage is compromised.
  */
 
 import React, { useState } from 'react';
-import { exportCheckInsJSON } from '../lib/storage';
+import { exportCheckInsJSON, isUsingTemporaryCache } from '../lib/storage';
 
 interface PrivacyControlsProps {
   onDataPurge: () => void;
 }
 
-export const PrivacyControls: React.FC<PrivacyControlsProps> = ({ onDataPurge }) => {
-  const [showConfirm, setShowConfirm] = useState(false);
+export const PrivacyControls: React.FC<PrivacyControlsProps> = ({ onDataPurge }): React.ReactElement => {
+  const [showConfirm, setShowConfirm] = useState<boolean>(false);
 
-  const handleExport = () => {
+  const handleExport = (): void => {
     try {
       const dataStr = exportCheckInsJSON();
       const blob = new Blob([dataStr], { type: 'application/json' });
@@ -34,16 +37,16 @@ export const PrivacyControls: React.FC<PrivacyControlsProps> = ({ onDataPurge })
     }
   };
 
-  const handlePurgeClick = () => {
+  const handlePurgeClick = (): void => {
     setShowConfirm(true);
   };
 
-  const handleConfirmPurge = () => {
+  const handleConfirmPurge = (): void => {
     onDataPurge();
     setShowConfirm(false);
   };
 
-  const handleCancelPurge = () => {
+  const handleCancelPurge = (): void => {
     setShowConfirm(false);
   };
 
@@ -54,6 +57,22 @@ export const PrivacyControls: React.FC<PrivacyControlsProps> = ({ onDataPurge })
       style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}
     >
       <h2 id="privacy-heading">Data Privacy & Controls</h2>
+
+      {/* Quota / Private Browsing Storage Warning Banner */}
+      {isUsingTemporaryCache && (
+        <div 
+          className="alert alert-danger"
+          role="alert"
+          style={{ borderLeft: '4px solid var(--color-risk-high)' }}
+        >
+          <h3 style={{ fontSize: '1rem', color: 'var(--color-risk-high)', fontWeight: 600 }}>
+            ⚠️ Storage Warning: Temporary Session Cache Active
+          </h3>
+          <p style={{ fontSize: '0.9rem', marginTop: 'var(--spacing-xs)', color: 'var(--color-risk-high)' }}>
+            ExamEase AI detected that local storage writing is restricted or full. We are keeping your check-ins in temporary browser memory. **Your data will be cleared if you close or refresh this tab.** Please use the "Export JSON Data" button to save your logs before closing.
+          </p>
+        </div>
+      )}
 
       {/* Privacy Notice Box */}
       <div 

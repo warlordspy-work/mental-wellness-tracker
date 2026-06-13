@@ -4,6 +4,9 @@
  * Manages the persistence of student check-ins entirely client-side using localStorage.
  * Provides utility functions to retrieve check-in histories, calculate wellness statistics,
  * export JSON files, and clear student records.
+ * 
+ * Code Quality Updates: Uses explicit return types, handles localStorage write exceptions
+ * (quota limits, private mode blocks) with memory caching fallback, and flags caching status.
  */
 
 import { CheckIn, WellnessStats } from './types';
@@ -11,29 +14,64 @@ import { analyzeCheckIn } from './wellnessEngine';
 
 const STORAGE_KEY = 'examease_checkins';
 
-// In-memory fallback database for test setups and constrained environments
+// In-memory fallback database for private browsing mode or quota-blocked situations
 let memoryStore: Record<string, string> = {};
 
+// Reactive flag indicating whether data persistence is compromised and using memory cache
+export let isUsingTemporaryCache = false;
+
+/**
+ * Safe retrieval from local storage. Falls back to memory cache if blocked.
+ */
 function getItem(key: string): string | null {
   try {
-    return typeof localStorage !== 'undefined' && localStorage ? localStorage.getItem(key) : memoryStore[key] || null;
-  } catch {
+    if (typeof localStorage !== 'undefined' && localStorage) {
+      return localStorage.getItem(key);
+    }
+    isUsingTemporaryCache = true;
+    return memoryStore[key] || null;
+  } catch (error) {
+    isUsingTemporaryCache = true;
     return memoryStore[key] || null;
   }
 }
 
+/**
+ * Safe insertion to local storage. Warns on QuotaExceededError or security block and falls back to memory.
+ */
 function setItem(key: string, value: string): void {
   try {
     if (typeof localStorage !== 'undefined' && localStorage) {
       localStorage.setItem(key, value);
     } else {
+      isUsingTemporaryCache = true;
       memoryStore[key] = value;
     }
-  } catch {
+  } catch (error: any) {
+    isUsingTemporaryCache = true;
+    
+    // Explicitly check for quota limitations or browser locks
+    const isQuotaError = 
+      error instanceof DOMException && (
+        error.name === 'QuotaExceededError' ||
+        error.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+        error.code === 22 ||
+        error.code === 1014
+      );
+
+    if (isQuotaError) {
+      console.warn('CRITICAL WARNING: localStorage quota exceeded. Reverting to temporary memory cache.');
+    } else {
+      console.warn('localStorage is blocked or throws error. Reverting to temporary memory cache:', error);
+    }
+
     memoryStore[key] = value;
   }
 }
 
+/**
+ * Safe deletion from local storage. Falls back to memory cache if blocked.
+ */
 function removeItem(key: string): void {
   try {
     if (typeof localStorage !== 'undefined' && localStorage) {
@@ -41,13 +79,14 @@ function removeItem(key: string): void {
     } else {
       delete memoryStore[key];
     }
-  } catch {
+  } catch (error) {
+    isUsingTemporaryCache = true;
     delete memoryStore[key];
   }
 }
 
 /**
- * Saves a new check-in to localStorage.
+ * Saves a new check-in to storage.
  * Prepends the new check-in so that index 0 is always the latest entry.
  * 
  * @param checkIn The CheckIn object to save
@@ -63,7 +102,7 @@ export function saveCheckIn(checkIn: CheckIn): void {
 }
 
 /**
- * Loads all check-ins from localStorage.
+ * Loads all check-ins from storage.
  * Returns an empty array if no check-ins exist.
  * 
  * @returns Array of CheckIn objects sorted latest to oldest
@@ -86,7 +125,7 @@ export function loadCheckIns(): CheckIn[] {
 }
 
 /**
- * Deletes all check-ins from localStorage.
+ * Deletes all check-ins from storage.
  */
 export function clearAllData(): void {
   try {
@@ -104,8 +143,8 @@ export function clearAllData(): void {
  * @returns WellnessStats object
  */
 export function calculateStats(): WellnessStats {
-  const checkIns = loadCheckIns();
-  const count = checkIns.length;
+  const checkIns: CheckIn[] = loadCheckIns();
+  const count: number = checkIns.length;
 
   if (count === 0) {
     return {
@@ -129,7 +168,7 @@ export function calculateStats(): WellnessStats {
   // Track frequencies of detected triggers
   const triggerFrequencies: Record<string, number> = {};
 
-  checkIns.forEach(entry => {
+  checkIns.forEach((entry: CheckIn) => {
     sumMood += entry.mood;
     sumStress += entry.stress;
     sumSleep += entry.sleepHours;
@@ -137,7 +176,7 @@ export function calculateStats(): WellnessStats {
 
     // Run wellness engine on each check-in to extract triggers
     const analysis = analyzeCheckIn(entry);
-    analysis.detectedTriggers.forEach(trigger => {
+    analysis.detectedTriggers.forEach((trigger: string) => {
       triggerFrequencies[trigger] = (triggerFrequencies[trigger] || 0) + 1;
     });
   });
@@ -145,7 +184,7 @@ export function calculateStats(): WellnessStats {
   // Determine the most common trigger
   let mostCommonTrigger = 'None';
   let maxCount = 0;
-  Object.entries(triggerFrequencies).forEach(([trigger, freq]) => {
+  Object.entries(triggerFrequencies).forEach(([trigger, freq]: [string, number]) => {
     if (freq > maxCount) {
       maxCount = freq;
       mostCommonTrigger = trigger;
@@ -153,7 +192,7 @@ export function calculateStats(): WellnessStats {
   });
 
   // Retrieve latest entry details
-  const latestEntry = checkIns[0];
+  const latestEntry: CheckIn = checkIns[0];
   const latestAnalysis = analyzeCheckIn(latestEntry);
 
   return {
@@ -174,6 +213,6 @@ export function calculateStats(): WellnessStats {
  * @returns JSON string of all check-ins
  */
 export function exportCheckInsJSON(): string {
-  const checkIns = loadCheckIns();
+  const checkIns: CheckIn[] = loadCheckIns();
   return JSON.stringify(checkIns, null, 2);
 }

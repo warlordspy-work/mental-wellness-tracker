@@ -4,6 +4,8 @@
  * Central controller of the ExamEase AI application.
  * Manages reactive state updates for check-in logs, calculated statistics,
  * and current navigation layouts. Implements keyboard skip-links and tabpanels.
+ * 
+ * Code Quality Updates: Added explicit React.ReactElement return type, integrated strict types.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -17,7 +19,7 @@ import { CheckIn, WellnessInsights, WellnessStats } from './lib/types';
 import { loadCheckIns, saveCheckIn, clearAllData, calculateStats } from './lib/storage';
 import { analyzeCheckIn } from './lib/wellnessEngine';
 
-export const App: React.FC = () => {
+export const App: React.FC = (): React.ReactElement => {
   const [activeTab, setActiveTab] = useState<string>('checkin');
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [stats, setStats] = useState<WellnessStats>({
@@ -37,23 +39,23 @@ export const App: React.FC = () => {
     refreshData();
   }, []);
 
-  const refreshData = () => {
-    const loadedLogs = loadCheckIns();
+  const refreshData = (): void => {
+    const loadedLogs: CheckIn[] = loadCheckIns();
     setCheckIns(loadedLogs);
     
-    const calculatedStats = calculateStats();
+    const calculatedStats: WellnessStats = calculateStats();
     setStats(calculatedStats);
 
     if (loadedLogs.length > 0) {
       // Index 0 represents the newest entry
-      const analysis = analyzeCheckIn(loadedLogs[0]);
+      const analysis: WellnessInsights = analyzeCheckIn(loadedLogs[0]);
       setLatestInsights(analysis);
     } else {
       setLatestInsights(null);
     }
   };
 
-  const handleCheckInSubmit = (newEntry: Omit<CheckIn, 'id' | 'timestamp'>) => {
+  const handleCheckInSubmit = (newEntry: Omit<CheckIn, 'id' | 'timestamp'>): void => {
     const fullEntry: CheckIn = {
       ...newEntry,
       id: `log-${Date.now()}`,
@@ -64,7 +66,7 @@ export const App: React.FC = () => {
     refreshData();
   };
 
-  const handleDataPurge = () => {
+  const handleDataPurge = (): void => {
     clearAllData();
     refreshData();
   };

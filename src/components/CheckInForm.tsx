@@ -4,17 +4,22 @@
  * Form component for daily check-ins.
  * Captures target exam, exam date, mood, stress, sleep, study, and a journal reflection.
  * Fully validated on submit, displaying descriptive ARIA-enabled error messages.
+ * 
+ * Code Quality Updates: Added explicit React.ReactElement return type, integrated input sanitization
+ * using sanitizer helper, set maxLength properties, and used bounds constants.
  */
 
 import React, { useState } from 'react';
 import { CheckIn } from '../lib/types';
 import { validateCheckIn, ValidationError } from '../lib/validation';
+import { sanitizeTextInput } from '../lib/sanitizer';
+import { INPUT_LIMITS, RATING_BOUNDS } from '../lib/constants';
 
 interface CheckInFormProps {
   onCheckInSubmit: (checkIn: Omit<CheckIn, 'id' | 'timestamp'>) => void;
 }
 
-export const CheckInForm: React.FC<CheckInFormProps> = ({ onCheckInSubmit }) => {
+export const CheckInForm: React.FC<CheckInFormProps> = ({ onCheckInSubmit }): React.ReactElement => {
   // Local form state
   const [examType, setExamType] = useState<string>('NEET');
   const [examDate, setExamDate] = useState<string>('');
@@ -28,14 +33,17 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({ onCheckInSubmit }) => 
   const [errors, setErrors] = useState<ValidationError>({});
   const [successMessage, setSuccessMessage] = useState<string>('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     setSuccessMessage('');
     setErrors({});
 
-    // Parse input fields
+    // Parse numeric fields
     const parsedSleep = parseFloat(sleepHours);
     const parsedStudy = parseFloat(studyHours);
+
+    // Sanitize user inputs safely at the boundary
+    const sanitizedJournal = sanitizeTextInput(journalText, INPUT_LIMITS.JOURNAL_MAX_LENGTH);
 
     const formData: Partial<CheckIn> = {
       examType,
@@ -44,7 +52,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({ onCheckInSubmit }) => 
       stress: Number(stress),
       sleepHours: isNaN(parsedSleep) ? 0 : parsedSleep,
       studyHours: isNaN(parsedStudy) ? 0 : parsedStudy,
-      journalText: journalText
+      journalText: sanitizedJournal
     };
 
     // Run validation checks
@@ -61,7 +69,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({ onCheckInSubmit }) => 
       return;
     }
 
-    // Submit validated payload
+    // Submit validated and sanitized payload
     onCheckInSubmit({
       examType,
       examDate,
@@ -69,7 +77,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({ onCheckInSubmit }) => 
       stress: Number(stress),
       sleepHours: Number(sleepHours),
       studyHours: Number(studyHours),
-      journalText
+      journalText: sanitizedJournal
     });
 
     // Reset journal reflection and set success toast
@@ -141,7 +149,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({ onCheckInSubmit }) => 
 
         {/* Ratings Group (Mood and Stress) using fieldset for accessibility */}
         <fieldset>
-          <legend>Scale Log (1 to 10)</legend>
+          <legend>Scale Log ({RATING_BOUNDS.MIN_MOOD} to {RATING_BOUNDS.MAX_MOOD})</legend>
           <p style={{ fontSize: '0.85rem', marginBottom: 'var(--spacing-md)', color: 'var(--color-text-secondary)' }}>
             Rates reflect how you felt today.
           </p>
@@ -153,8 +161,8 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({ onCheckInSubmit }) => 
               <input
                 type="range"
                 id="mood"
-                min="1"
-                max="10"
+                min={RATING_BOUNDS.MIN_MOOD}
+                max={RATING_BOUNDS.MAX_MOOD}
                 step="1"
                 value={mood}
                 onChange={(e) => setMood(Number(e.target.value))}
@@ -173,8 +181,8 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({ onCheckInSubmit }) => 
               <input
                 type="range"
                 id="stress"
-                min="1"
-                max="10"
+                min={RATING_BOUNDS.MIN_STRESS}
+                max={RATING_BOUNDS.MAX_STRESS}
                 step="1"
                 value={stress}
                 onChange={(e) => setStress(Number(e.target.value))}
@@ -198,7 +206,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({ onCheckInSubmit }) => 
               type="number"
               id="sleepHours"
               min="0"
-              max="24"
+              max={RATING_BOUNDS.MAX_SLEEP_HOURS}
               step="0.5"
               value={sleepHours}
               onChange={(e) => setSleepHours(e.target.value)}
@@ -218,7 +226,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({ onCheckInSubmit }) => 
               type="number"
               id="studyHours"
               min="0"
-              max="24"
+              max={RATING_BOUNDS.MAX_STUDY_HOURS}
               step="0.5"
               value={studyHours}
               onChange={(e) => setStudyHours(e.target.value)}
@@ -240,10 +248,11 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({ onCheckInSubmit }) => 
             placeholder="How was your prep today? Any specific topic causing concern or thoughts on mock exams?"
             value={journalText}
             onChange={(e) => setJournalText(e.target.value)}
+            maxLength={INPUT_LIMITS.JOURNAL_MAX_LENGTH}
             aria-describedby="journalText-help journalText-error"
           />
           <p id="journalText-help" style={{ fontSize: '0.8rem', marginTop: 'var(--spacing-xs)' }}>
-            Write openly. The AI uses this text to identify burnout flags and mock exam anxiety.
+            Write openly (max {INPUT_LIMITS.JOURNAL_MAX_LENGTH} characters). The AI uses this text to identify burnout flags and mock exam anxiety.
           </p>
           {errors.journalText && (
             <p id="journalText-error" style={{ color: 'var(--color-risk-high)', fontSize: '0.85rem', marginTop: 'var(--spacing-xs)' }} role="alert">

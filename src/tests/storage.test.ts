@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { saveCheckIn, loadCheckIns, clearAllData, calculateStats } from '../lib/storage';
+import { saveCheckIn, loadCheckIns, clearAllData, calculateStats, isUsingTemporaryCache } from '../lib/storage';
 import { CheckIn } from '../lib/types';
 
 describe('storage - Client Database Operations', () => {
@@ -88,4 +88,33 @@ describe('storage - Client Database Operations', () => {
     expect(stats.totalCheckIns).toBe(0);
   });
 
+  it('should handle QuotaExceededError and set temporary cache flag', () => {
+    // If window or window.localStorage is not defined, local storage was already blocked
+    if (typeof window === 'undefined' || !window.localStorage) {
+      expect(isUsingTemporaryCache).toBe(true);
+      return;
+    }
+    
+    const originalSetItem = window.localStorage.setItem;
+    
+    // Mock setItem to throw QuotaExceededError DOMException
+    window.localStorage.setItem = () => {
+      throw new DOMException('Quota exceeded', 'QuotaExceededError');
+    };
+    
+    try {
+      saveCheckIn(testLog1);
+      
+      // Should fall back to memory store and mark the temporary cache flag true
+      expect(isUsingTemporaryCache).toBe(true);
+      const logs = loadCheckIns();
+      expect(logs).toHaveLength(1);
+      expect(logs[0].id).toBe('log-101');
+    } finally {
+      // Restore original setItem
+      window.localStorage.setItem = originalSetItem;
+    }
+  });
+
 });
+

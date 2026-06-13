@@ -5,6 +5,8 @@
  * Renders the application logo, title, and navigation tabs.
  * Uses strict ARIA roles (tablist, tab) and keyboard/screen reader aids
  * to improve accessibility scores.
+ * 
+ * Code Quality Updates: Added explicit React.ReactElement return type to function.
  */
 
 import React from 'react';
@@ -14,7 +16,7 @@ interface HeaderProps {
   setActiveTab: (tab: string) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
+export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }): React.ReactElement => {
   const tabs = [
     { id: 'checkin', label: 'Daily Check-in' },
     { id: 'trends', label: 'Trends Dashboard' },

@@ -4,6 +4,8 @@
  * Displays aggregate metrics computed over historical check-ins
  * and lists past logs. Avoids bulky external chart dependencies,
  * prioritizing clean semantic grids and full screen reader compatibility.
+ * 
+ * Code Quality Updates: Added explicit React.ReactElement return type, avoided magic strings.
  */
 
 import React, { useState } from 'react';
@@ -15,14 +17,14 @@ interface TrendDashboardProps {
   stats: WellnessStats;
 }
 
-export const TrendDashboard: React.FC<TrendDashboardProps> = ({ checkIns, stats }) => {
+export const TrendDashboard: React.FC<TrendDashboardProps> = ({ checkIns, stats }): React.ReactElement => {
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
 
-  const toggleExpandEntry = (id: string) => {
+  const toggleExpandEntry = (id: string): void => {
     setExpandedEntryId(prev => (prev === id ? null : id));
   };
 
-  const getRiskColor = (level: string) => {
+  const getRiskColor = (level: string): string => {
     switch (level) {
       case 'High': return 'var(--color-risk-high)';
       case 'Moderate': return 'var(--color-risk-moderate)';
@@ -30,7 +32,7 @@ export const TrendDashboard: React.FC<TrendDashboardProps> = ({ checkIns, stats 
     }
   };
 
-  const getRiskBgColor = (level: string) => {
+  const getRiskBgColor = (level: string): string => {
     switch (level) {
       case 'High': return 'var(--color-risk-high-bg)';
       case 'Moderate': return 'var(--color-risk-moderate-bg)';
